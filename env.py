@@ -1,9 +1,4 @@
 #! /usr/bin/env python
-"""Environment for Microsoft AirSim Unity Quadrotor using AirSim python API
-- Author: Subin Yang
-- Contact: subinlab.yang@gmail.com
-- Date: 2019.06.20.
-"""
 import time
 from PIL import Image
 import numpy as np
@@ -21,9 +16,28 @@ class DroneEnv:
     cnt_collision: int
     collision_change: bool
 
-    def __init__(self):
+    def __init__(self, duration: int = 1):
+        self.duration = duration
         self.reset()
         self.episode = 0
+
+    def reset(self):
+        self.client = self.__get_client()
+        self.pose = self.client.simGetVehiclePose()
+        self.state = self.client.getMultirotorState().kinematics_estimated.position
+        print(f'Initial position: ({self.state.x_val}, {self.state.y_val}, {self.state.z_val})')
+
+        init_x = 0
+        init_y = 0
+        init_z = 0
+        self.client.moveToPositionAsync(-10, 10, -10, 5).join()
+        # self.client.moveToPositionAsync(init_x, init_y, init_z, self.duration).join()
+
+        self.quad_offset = (0, 0, 0)
+        self.start_collision = "Cube"
+        self.next_collision = "Cube"
+        self.cnt_collision = 0
+        self.collision_change = False
 
     def step(self, action):
         print("Taking a step.")
@@ -49,51 +63,31 @@ class DroneEnv:
         done = self.__is_done(reward)
         return state, reward, done
 
-    def reset(self):
-        self.client = self.__get_client()
-        self.pose = self.client.simGetVehiclePose()
-        self.state = self.client.getMultirotorState().kinematics_estimated.position
-
-        print(f'Initial position: ({self.state.x_val}, {self.state.y_val}, {self.state.z_val})')
-
-        self.quad_offset = (0, 0, 0)
-        init_x = 162
-        init_y = -320
-        init_z = -150
-
-        self.start_collision = "Cube"
-        self.next_collision = "Cube"
-        self.cnt_collision = 0
-        self.collision_change = False
-
-        self.client.takeoffAsync().join()
-        print("Take off moving position")
-        self.client.moveToPositionAsync(init_x, init_y, init_z, 5).join()
-
     @staticmethod
     def __get_client():
         client = airsim.MultirotorClient()
         client.confirmConnection()
         client.enableApiControl(True)
         client.armDisarm(True)
+        client.takeoffAsync().join()
         return client
 
     def __interpret_action(self, action: int):
-        scaling_factor = 5
+        step_size = 5
         if action == 0:
             self.quad_offset = (0, 0, 0)
         elif action == 1:
-            self.quad_offset = (scaling_factor, 0, 0)
+            self.quad_offset = (step_size, 0, 0)
         elif action == 2:
-            self.quad_offset = (0, scaling_factor, 0)
+            self.quad_offset = (0, step_size, 0)
         elif action == 3:
-            self.quad_offset = (0, 0, scaling_factor)
+            self.quad_offset = (0, 0, step_size)
         elif action == 4:
-            self.quad_offset = (-scaling_factor, 0, 0)
+            self.quad_offset = (-step_size, 0, 0)
         elif action == 5:
-            self.quad_offset = (0, -scaling_factor, 0)
+            self.quad_offset = (0, -step_size, 0)
         elif action == 6:
-            self.quad_offset = (0, 0, -scaling_factor)
+            self.quad_offset = (0, 0, -step_size)
 
         return self.quad_offset
 
@@ -101,9 +95,7 @@ class DroneEnv:
         x_velocity = quad_vel.x_val + self.quad_offset[0]
         y_velocity = quad_vel.y_val + self.quad_offset[1]
         z_velocity = quad_vel.z_val + self.quad_offset[2]
-        duration = 20  # @Todo: What's the unit here?
-        self.client.moveByVelocityAsync(x_velocity, y_velocity, z_velocity, duration).join()
-        time.sleep(0.5)  # @Todo: Why the sleep?
+        self.client.moveByVelocityAsync(x_velocity, y_velocity, z_velocity, self.duration).join()
 
     def __check_for_collision(self, collision_info):
         if collision_info.has_collided:
@@ -153,10 +145,11 @@ class DroneEnv:
         elif reward > 499:
             done = 1
 
-        self.client.armDisarm(False)
-        self.client.reset()
-        self.client.enableApiControl(False)
-        time.sleep(1)  # @Todo: Why do we have this sleep here?
+        if done == 1:
+            self.client.armDisarm(False)
+            self.client.reset()
+            self.client.enableApiControl(False)
+            time.sleep(1)  # @Todo: Why do we have this sleep here?
         return done
 
     @staticmethod
@@ -170,8 +163,8 @@ class DroneEnv:
     def __transform_input(responses):
         response = responses[0]
         img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8)
-        img_rgba = img1d.reshape(response.height, response.width, 4)
-        img2d = np.flipud(img_rgba)
+        img_rgb = img1d.reshape(response.height, response.width, 3)
+        img2d = np.flipud(img_rgb)
 
         image = Image.fromarray(img2d)
         im_final = np.array(image.resize((84, 84)).convert("L"))
