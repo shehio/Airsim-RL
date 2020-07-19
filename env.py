@@ -18,26 +18,24 @@ class DroneEnv:
 
     def __init__(self, duration: int = 1):
         self.duration = duration
-        self.reset()
         self.episode = 0
+        self.reset()
+        print(f'Initial position: ({self.state.x_val}, {self.state.y_val}, {self.state.z_val})\n')
 
     def reset(self):
+        print('RESET\n\n')
         self.client = self.__get_client()
         self.pose = self.client.simGetVehiclePose()
         self.state = self.client.getMultirotorState().kinematics_estimated.position
-        print(f'Initial position: ({self.state.x_val}, {self.state.y_val}, {self.state.z_val})')
 
-        init_x = 0
-        init_y = 0
-        init_z = 0
         self.client.moveToPositionAsync(-10, 10, -10, 5).join()
-        # self.client.moveToPositionAsync(init_x, init_y, init_z, self.duration).join()
 
         self.quad_offset = (0, 0, 0)
         self.start_collision = "Cube"
         self.next_collision = "Cube"
         self.cnt_collision = 0
         self.collision_change = False
+        self.episode += 1
 
     def step(self, action):
         print("Taking a step.")
@@ -47,6 +45,8 @@ class DroneEnv:
         quad_state = self.client.getMultirotorState().kinematics_estimated.position
         print(f'Position Before: ({quad_state.x_val}, {quad_state.y_val}, {quad_state.z_val})')
         quad_vel = self.client.getMultirotorState().kinematics_estimated.linear_velocity
+
+        print(f'Current Velocity: ({quad_vel.x_val}, {quad_vel.y_val}, {quad_vel.z_val})')
         self.__move_quadrotor(quad_vel)
 
         collision_info = self.client.simGetCollisionInfo()
@@ -56,7 +56,7 @@ class DroneEnv:
         self.__check_for_collision(collision_info)
         quad_state = self.client.getMultirotorState().kinematics_estimated.position
         quad_vel = self.client.getMultirotorState().kinematics_estimated.linear_velocity
-        print(f'Position After: ({quad_state.x_val}, {quad_state.y_val}, {quad_state.z_val})')
+        print(f'Position After: ({quad_state.x_val}, {quad_state.y_val}, {quad_state.z_val})\n\n')
 
         reward = self.__compute_reward(quad_state, quad_vel, collision_info)
         state = self.__get_observation()
@@ -77,7 +77,7 @@ class DroneEnv:
         if action == 0:
             self.quad_offset = (0, 0, 0)
         elif action == 1:
-            self.quad_offset = (step_size, 0, 0)
+            self.quad_offset = (step_size, 0, -1)
         elif action == 2:
             self.quad_offset = (0, step_size, 0)
         elif action == 3:
@@ -95,6 +95,7 @@ class DroneEnv:
         x_velocity = quad_vel.x_val + self.quad_offset[0]
         y_velocity = quad_vel.y_val + self.quad_offset[1]
         z_velocity = quad_vel.z_val + self.quad_offset[2]
+        self.client.simPrintLogMessage(f'Moving ({x_velocity}, {y_velocity}, {z_velocity})')
         self.client.moveByVelocityAsync(x_velocity, y_velocity, z_velocity, self.duration).join()
 
     def __check_for_collision(self, collision_info):
@@ -109,24 +110,10 @@ class DroneEnv:
     def __compute_reward(self, quad_state, quad_vel, collision_info):
         thresh_dist, max_dist, beta, z = 7, 500, 1, -10
 
-        if self.episode == 0:
-            if self.collision_change and self.next_collision != self.start_collision:
-                if "Cube" in self.next_collision:
-                    dist = self.__get_distance(quad_state)
-                    reward = 50000
-                else:
-                    reward = -100
-            else:
-                reward = 0
+        if self.collision_change and self.next_collision != self.start_collision and "Cube" in self.next_collision:
+            reward = -1000
         else:
-            if self.next_collision != self.start_collision:
-                if "Cube" in self.next_collision:
-                    dist = self.__get_distance(quad_state)
-                    reward = 50000
-                else:
-                    reward = -100
-            else:
-                reward = 0
+            reward = - self.__get_distance(quad_state)
 
         if quad_state.z_val < -280:
             reward = -100
@@ -146,10 +133,10 @@ class DroneEnv:
             done = 1
 
         if done == 1:
+            print("======DONE======\n")
             self.client.armDisarm(False)
             self.client.reset()
             self.client.enableApiControl(False)
-            time.sleep(1)  # @Todo: Why do we have this sleep here?
         return done
 
     @staticmethod
