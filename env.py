@@ -10,7 +10,7 @@ import numpy as np
 import airsim
 
 
-class DroneEnv(object):
+class DroneEnv:
     """Drone environment class using AirSim python API"""
     client: object
     pose: object
@@ -67,32 +67,32 @@ class DroneEnv(object):
         self.collision_change = False
 
         self.client.takeoffAsync().join()
-        print("take off moving position")
+        print("Take off moving position")
         self.client.moveToPositionAsync(init_x, init_y, init_z, 5).join()
 
     @staticmethod
-    def __get_client(self):
+    def __get_client():
         client = airsim.MultirotorClient()
         client.confirmConnection()
         client.enableApiControl(True)
         client.armDisarm(True)
         return client
 
-    def __interpret_action(self, action):
+    def __interpret_action(self, action: int):
         scaling_factor = 5
-        if action.item() == 0:
+        if action == 0:
             self.quad_offset = (0, 0, 0)
-        elif action.item() == 1:
+        elif action == 1:
             self.quad_offset = (scaling_factor, 0, 0)
-        elif action.item() == 2:
+        elif action == 2:
             self.quad_offset = (0, scaling_factor, 0)
-        elif action.item() == 3:
+        elif action == 3:
             self.quad_offset = (0, 0, scaling_factor)
-        elif action.item() == 4:
+        elif action == 4:
             self.quad_offset = (-scaling_factor, 0, 0)
-        elif action.item() == 5:
+        elif action == 5:
             self.quad_offset = (0, -scaling_factor, 0)
-        elif action.item() == 6:
+        elif action == 6:
             self.quad_offset = (0, 0, -scaling_factor)
 
         return self.quad_offset
