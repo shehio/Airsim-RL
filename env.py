@@ -117,12 +117,9 @@ class DroneEnv:
             done = 1
 
         if done == 1:
-            # @Todo: Why are we disabling control here?
             print("======DONE======\n")
             self.client.simPrintLogMessage(f'Episode {self.episode} done, reward is: {reward}, resetting.')
-            # self.client.armDisarm(False)
             self.reset()
-            # self.client.enableApiControl(False)
         return done
 
     @staticmethod
