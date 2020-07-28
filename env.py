@@ -22,6 +22,10 @@ class DroneEnv:
         self.client = self.__get_client()
         self.pose = self.client.simGetVehiclePose()
 
+        step_size = 5
+        self.action_space = [(0, 0, 0), (step_size, 0, 0), (0, step_size, 0), (0, 0, step_size),
+                             (-step_size, 0, 0), (0, -step_size, 0), (0, 0, -step_size)]
+
         self.reset()
         print(f'Initial position: ({self.state.x_val}, {self.state.y_val}, {self.state.z_val})\n')
 
@@ -34,9 +38,9 @@ class DroneEnv:
         self.quad_offset = (0, 0, 0)
         self.episode += 1
 
-    def step(self, action):
+    def step(self, action_index):
         print("Taking a step.")
-        self.quad_offset = self.__interpret_action(action)
+        self.quad_offset = self.__get_action_from_action_index(action_index)
         print("Quad offset: ", self.quad_offset)
 
         quad_state = self.client.getMultirotorState().kinematics_estimated.position
@@ -65,23 +69,9 @@ class DroneEnv:
         return client
 
     # @Todo: Add a hover action so it stays where the desired destination is.
-    def __interpret_action(self, action: int):
-        step_size = 5
-        if action == 0:
-            self.quad_offset = (0, 0, 0)
-        elif action == 1:
-            self.quad_offset = (step_size, 0, 0)
-        elif action == 2:
-            self.quad_offset = (0, step_size, 0)
-        elif action == 3:
-            self.quad_offset = (0, 0, step_size)
-        elif action == 4:
-            self.quad_offset = (-step_size, 0, 0)
-        elif action == 5:
-            self.quad_offset = (0, -step_size, 0)
-        elif action == 6:
-            self.quad_offset = (0, 0, -step_size)
-
+    def __get_action_from_action_index(self, action_index: int):
+        assert 0 <= action_index <= 6
+        self.quad_offset = self.action_space[action_index]
         return self.quad_offset
 
     def __move_quadrotor(self, quad_vel):
