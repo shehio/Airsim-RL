@@ -38,7 +38,7 @@ class CommonHelpers:
 
 
 class ActorNetwork(nn.Module):
-    def __init__(self, input_layer_neurons: int, hidden_layer_neurons: list[int], output_layer_neurons: int,
+    def __init__(self, input_layer_neurons: int, hidden_layer_neurons: list, output_layer_neurons: int,
                  learning_rate=0.002, decay_rate=0.99, dropout_rate=0.0, tanh=False):
         super(ActorNetwork, self).__init__()
         self.layers = CommonHelpers.create_network(
@@ -58,7 +58,7 @@ class ActorNetwork(nn.Module):
 
 
 class CriticNetwork(nn.Module):
-    def __init__(self, input_layer_neurons: int, hidden_layer_neurons: list[int], output_layer_neurons: int,
+    def __init__(self, input_layer_neurons: int, hidden_layer_neurons: list, output_layer_neurons: int,
                  learning_rate=0.002, decay_rate=0.99, dropout_rate=0.0, tanh=False):
         super(CriticNetwork, self).__init__()
         self.layers = CommonHelpers.create_network(
@@ -80,9 +80,9 @@ class NetworkHelpers:
 
     @staticmethod
     def create_simple_actor_network(
-            input_count: int,
-            hidden_layers: list,
-            output_count: int,
+            input_layer_neurons: int,
+            hidden_layer_neurons: list,
+            output_layer_neurons: int,
             dropout_rate: float = 0.0,
             tanh=False):
         """
@@ -90,25 +90,25 @@ class NetworkHelpers:
         and softmax in the final layer
         """
         return ActorNetwork(
-            input_count=input_count,
-            hidden_layers=hidden_layers,
-            output_count=output_count,
+            input_layer_neurons=input_layer_neurons,
+            hidden_layer_neurons=hidden_layer_neurons,
+            output_layer_neurons=output_layer_neurons,
             dropout_rate=dropout_rate,
             tanh=tanh)
 
     @staticmethod
     def create_simple_critic_network(
-            input_count: int,
-            hidden_layers: list,
-            output_count: int,
+            input_layer_neurons: int,
+            hidden_layer_neurons: list,
+            output_layer_neurons: int,
             dropout_rate: float = 0.0,
             tanh=False):
         """
         :return: A simple critic network with either ReLU or Tanh in the all layers
         """
         return CriticNetwork(
-            input_count=input_count,
-            hidden_layers=hidden_layers,
-            output_count=output_count,
+            input_layer_neurons=input_layer_neurons,
+            hidden_layer_neurons=hidden_layer_neurons,
+            output_layer_neurons=output_layer_neurons,
             dropout_rate=dropout_rate,
             tanh=tanh)

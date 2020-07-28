@@ -27,34 +27,35 @@ class DroneEnv:
                              (-step_size, 0, 0), (0, -step_size, 0), (0, 0, -step_size)]
 
         self.reset()
-        print(f'Initial position: ({self.state.x_val}, {self.state.y_val}, {self.state.z_val})\n')
+        initial_position = self.client.getMultirotorState().kinematics_estimated.position
+        print(f'Initial position: ({initial_position.x_val}, {initial_position.y_val}, {initial_position.z_val})\n')
 
     def reset(self):
         print('RESET\n\n')
 
-        self.state = self.client.getMultirotorState().kinematics_estimated.position
         self.client.moveToPositionAsync(0, 0, -10, 5).join()
-
+        self.state = self.__get_observation()
         self.quad_offset = (0, 0, 0)
         self.episode += 1
 
-    def step(self, action_index):
+    def step(self, action):
         print("Taking a step.")
-        self.quad_offset = self.__get_action_from_action_index(action_index)
-        print("Quad offset: ", self.quad_offset)
+        # self.quad_offset = self.__get_action_from_action_index(action_index)
+        self.quad_offset = action
+        print("Quad offset (aka action taken): ", self.quad_offset)
 
         quad_state = self.client.getMultirotorState().kinematics_estimated.position
         print(f'Position Before: ({quad_state.x_val}, {quad_state.y_val}, {quad_state.z_val})')
-        quad_vel = self.client.getMultirotorState().kinematics_estimated.linear_velocity
+        quad_velocity = self.client.getMultirotorState().kinematics_estimated.linear_velocity
 
-        print(f'Current Velocity: ({quad_vel.x_val}, {quad_vel.y_val}, {quad_vel.z_val})')
+        print(f'Current Velocity: ({quad_velocity.x_val}, {quad_velocity.y_val}, {quad_velocity.z_val})')
 
-        self.__move_quadrotor(quad_vel)
+        self.__move_quadrotor(quad_velocity)
         quad_state = self.client.getMultirotorState().kinematics_estimated.position
-        quad_vel = self.client.getMultirotorState().kinematics_estimated.linear_velocity
+        quad_velocity = self.client.getMultirotorState().kinematics_estimated.linear_velocity
         print(f'Position After: ({quad_state.x_val}, {quad_state.y_val}, {quad_state.z_val})\n\n')
 
-        reward = self.__compute_reward(quad_state, quad_vel, self.client.simGetCollisionInfo())
+        reward = self.__compute_reward(quad_state, quad_velocity, self.client.simGetCollisionInfo())
         state = self.__get_observation()
         done = self.__is_done(reward)
         return state, reward, done
@@ -132,4 +133,4 @@ class DroneEnv:
         # Uncomment to see the sample.
         # plt.imshow(im_final)
 
-        return im_final
+        return im_final.flatten()

@@ -4,8 +4,8 @@ import numpy as np
 import torch
 from torch.distributions import Categorical
 
-from .actor import Actor
-from .critic import Critic
+from actor import Actor
+from critic import Critic
 
 
 class PPO:

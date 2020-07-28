@@ -1,26 +1,33 @@
 from env import DroneEnv
 from networkhelpers import NetworkHelpers
+from actor import Actor
+from critic import Critic
 from ppo import PPO
 
 
-def get_actor_critic():
-    _actor = NetworkHelpers.create_simple_actor_network(
-        input_count=64 * 64,
-        hidden_layers=[200],
-        output_count=7,
+def get_actor_critic_networks():
+    _actor_network = NetworkHelpers.create_simple_actor_network(
+        input_layer_neurons=84 * 84,
+        hidden_layer_neurons=[200],
+        output_layer_neurons=7,
         tanh=True)
-    _critic = NetworkHelpers.create_simple_critic_network(
-        input_count=64 * 64,
-        hidden_layers=[200],
-        output_count=1,
+    _critic_network = NetworkHelpers.create_simple_critic_network(
+        input_layer_neurons=84 * 84,
+        hidden_layer_neurons=[200],
+        output_layer_neurons=1,
         tanh=True)
-    return _actor, _critic
+    return _actor_network, _critic_network
 
 
 if __name__ == '__main__':
     env = DroneEnv()
-    actor, critic = get_actor_critic()
-    ppo_agent = PPO(actor, critic, env.action_space)
+    state = env.state
+
+    actor_network, critic_network = get_actor_critic_networks()
+    ppo_agent = PPO(Actor(actor_network, env.action_space), Critic(critic_network), env.action_space)
 
     while True:
-        env.step(1)
+        action = ppo_agent.get_action(state)
+        state, reward, done = env.step(action)
+        ppo_agent.has_finished(done)
+        ppo_agent.reap_reward(reward)
