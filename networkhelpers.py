@@ -6,38 +6,47 @@ import torch.nn.functional as F
 
 class CommonHelpers:
     @staticmethod
-    def construct_layers_count(hidden_layers, input_count):
-        layers_count = hidden_layers
-        layers_count.insert(0, input_count)
-        return layers_count
+    def create_network(
+            input_layer_neurons: int,
+            hidden_layer_neurons: list,
+            output_layer_neurons: int,
+            drop_out_rate,
+            tanh=False):
+
+        network_layers = nn.ModuleList()
+        CommonHelpers.__add_layer_to_network(network_layers, input_layer_neurons, hidden_layer_neurons[0], tanh)
+
+        for i in range(len(hidden_layer_neurons) - 1):
+            CommonHelpers.__add_layer_to_network(
+                network_layers,
+                hidden_layer_neurons[i],
+                hidden_layer_neurons[i + 1],
+                tanh)
+
+        network_layers.append(nn.Dropout(drop_out_rate))
+        network_layers.append(nn.Linear(hidden_layer_neurons[-1], output_layer_neurons))
+        return network_layers
 
     @staticmethod
-    def create_network(layers_count, output_count, drop_out_rate, tanh=False):
-        layers = nn.ModuleList()
-        for i in range(len(layers_count) - 1):
-            CommonHelpers.__add_layer_to_network(layers, layers_count[i], layers_count[i + 1], tanh)
-        layers.append(nn.Dropout(drop_out_rate))
-        layers.append(nn.Linear(layers_count[-1], output_count))
-        return layers
-
-    @staticmethod
-    def __add_layer_to_network(layers, input_layer_count, output_layer_count, tanh=False):
-        current_layer = nn.Linear(input_layer_count, output_layer_count, bias=False)
-        layers.append(current_layer)
+    def __add_layer_to_network(network_layers, input_layer_neurons, output_layer_neurons, tanh=False):
+        current_layer = nn.Linear(input_layer_neurons, output_layer_neurons, bias=False)
+        network_layers.append(current_layer)
         if tanh:
-            layers.append(nn.Tanh())
+            network_layers.append(nn.Tanh())
         else:
-            layers.append(nn.ReLU(inplace=True))
+            network_layers.append(nn.ReLU(inplace=True))
 
 
 class ActorNetwork(nn.Module):
-    def __init__(self, input_count, hidden_layers, output_count, learning_rate=0.002,
-                 decay_rate=0.99, dropout_rate=0.0, tanh=False):
+    def __init__(self, input_layer_neurons: int, hidden_layer_neurons: list[int], output_layer_neurons: int,
+                 learning_rate=0.002, decay_rate=0.99, dropout_rate=0.0, tanh=False):
         super(ActorNetwork, self).__init__()
-
-        self.input_count = input_count
-        layers_count = CommonHelpers.construct_layers_count(hidden_layers, input_count)
-        self.layers = CommonHelpers.create_network(layers_count, output_count, dropout_rate, tanh)
+        self.layers = CommonHelpers.create_network(
+            input_layer_neurons,
+            hidden_layer_neurons,
+            output_layer_neurons,
+            dropout_rate,
+            tanh)
         self.optimizer = rmsprop.RMSprop(self.parameters(), lr=learning_rate, weight_decay=decay_rate)
 
     def forward(self, _input: torch.tensor):
@@ -49,13 +58,15 @@ class ActorNetwork(nn.Module):
 
 
 class CriticNetwork(nn.Module):
-    def __init__(self, input_count, hidden_layers, output_count,learning_rate=0.002,
-                 decay_rate=0.99, dropout_rate=0.0, tanh=False):
+    def __init__(self, input_layer_neurons: int, hidden_layer_neurons: list[int], output_layer_neurons: int,
+                 learning_rate=0.002, decay_rate=0.99, dropout_rate=0.0, tanh=False):
         super(CriticNetwork, self).__init__()
-
-        self.input_count = input_count
-        layers_count = CommonHelpers.construct_layers_count(hidden_layers, input_count)
-        self.layers = CommonHelpers.create_network(layers_count, output_count, dropout_rate, tanh)
+        self.layers = CommonHelpers.create_network(
+            input_layer_neurons,
+            hidden_layer_neurons,
+            output_layer_neurons,
+            dropout_rate,
+            tanh)
         self.optimizer = rmsprop.RMSprop(self.parameters(), lr=learning_rate, weight_decay=decay_rate)
 
     def forward(self, _input):

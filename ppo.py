@@ -87,7 +87,7 @@ class PPO:
         old_action_log_probabilities = torch.stack(self.memory.dlogps).flatten().detach()
         old_actions = torch.stack(self.memory.actions).detach()
 
-        rewards = __discount_and_normalize_rewards(
+        rewards = self.__discount_and_normalize_rewards(
             self.memory.actual_rewards,
             self.memory.episode_complete,
             self.gamma)
