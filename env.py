@@ -28,10 +28,10 @@ class DroneEnv:
 
         self.reset()
         initial_position = self.client.getMultirotorState().kinematics_estimated.position
-        print(f'Initial position: ({initial_position.x_val}, {initial_position.y_val}, {initial_position.z_val})\n')
+        # print(f'Initial position: ({initial_position.x_val}, {initial_position.y_val}, {initial_position.z_val})\n')
 
     def reset(self):
-        print('RESET\n\n')
+        # print('RESET\n\n')
 
         self.client.moveToPositionAsync(0, 0, -10, 5).join()
         self.state = self.__get_observation()
@@ -39,21 +39,21 @@ class DroneEnv:
         self.episode += 1
 
     def step(self, action):
-        print("Taking a step.")
+        # print("Taking a step.")
         # self.quad_offset = self.__get_action_from_action_index(action_index)
         self.quad_offset = action
-        print("Quad offset (aka action taken): ", self.quad_offset)
+        # print("Quad offset (aka action taken): ", self.quad_offset)
 
         quad_state = self.client.getMultirotorState().kinematics_estimated.position
-        print(f'Position Before: ({quad_state.x_val}, {quad_state.y_val}, {quad_state.z_val})')
+        # print(f'Position Before: ({quad_state.x_val}, {quad_state.y_val}, {quad_state.z_val})')
         quad_velocity = self.client.getMultirotorState().kinematics_estimated.linear_velocity
 
-        print(f'Current Velocity: ({quad_velocity.x_val}, {quad_velocity.y_val}, {quad_velocity.z_val})')
+        # print(f'Current Velocity: ({quad_velocity.x_val}, {quad_velocity.y_val}, {quad_velocity.z_val})')
 
         self.__move_quadrotor(quad_velocity)
         quad_state = self.client.getMultirotorState().kinematics_estimated.position
         quad_velocity = self.client.getMultirotorState().kinematics_estimated.linear_velocity
-        print(f'Position After: ({quad_state.x_val}, {quad_state.y_val}, {quad_state.z_val})\n\n')
+        # print(f'Position After: ({quad_state.x_val}, {quad_state.y_val}, {quad_state.z_val})\n\n')
 
         reward = self.__compute_reward(quad_state, quad_velocity, self.client.simGetCollisionInfo())
         state = self.__get_observation()
@@ -108,7 +108,7 @@ class DroneEnv:
             done = 1
 
         if done == 1:
-            print("======DONE======\n")
+            print("======EPISODE FINISHED======\n")
             self.client.simPrintLogMessage(f'Episode {self.episode} done, reward is: {reward}, resetting.')
             self.reset()
         return done

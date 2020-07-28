@@ -29,5 +29,6 @@ if __name__ == '__main__':
     while True:
         action = ppo_agent.get_action(state)
         state, reward, done = env.step(action)
-        ppo_agent.has_finished(done)
+
         ppo_agent.reap_reward(reward)
+        ppo_agent.has_finished(done)

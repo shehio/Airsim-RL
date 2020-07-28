@@ -25,7 +25,7 @@ class PPO:
             self.episode_complete = []
 
     def __init__(self, actor: Actor, critic: Critic, action_space: list, episode_number=0, gamma: float = 0.99,
-                 eta: float = 0.2, c1: float = 0.5, c2: float = 0.01, batch_size: int = 10,
+                 eta: float = 0.2, c1: float = 0.5, c2: float = 0.01, batch_size: int = 1,
                  learning_rate: float = 0.002, decay_rate: float = 0.90, epochs: int = 4):
         self.actor = actor
         self.critic = critic
@@ -65,14 +65,18 @@ class PPO:
 
     def has_finished(self, done):
         self.memory.episode_complete.append(done)
+        if done:
+            self.make_episode_updates()
 
     def update_batch(self, batch_size):
         self.batch_size = batch_size
 
     def make_episode_updates(self):
         self.episode_number = self.episode_number + 1  # @Todo: This should probably be removed from the class.
-        self.__evaluate_and_train_networks()
-        self.__reset_actor_and_memory()
+
+        if self.episode_number % self.batch_size == 0:
+            self.__evaluate_and_train_networks()
+            self.__reset_actor_and_memory()
 
     def __get_optimizers(self):
         params = [self.new_policy_network.parameters(), self.critic.value_network.parameters()]
@@ -117,12 +121,14 @@ class PPO:
             total_loss.mean().backward()
             self.optimizer.step()
 
+        print(f'Episode: {self.episode_number}. Total loss that we trained on: {total_loss} for {self.epochs} epochs.')
+
     def __reset_actor_and_memory(self):
         self.actor = Actor(self.new_policy_network, self.action_space)
         self.memory = self.Memory()
 
     @staticmethod
-    def discount_and_normalize_rewards(rewards, episode_completed, gamma, device=torch.device("cpu")):
+    def __discount_and_normalize_rewards(rewards, episode_completed, gamma, device=torch.device("cpu")):
         discounted_rewards = np.zeros_like(rewards)
         running_add = 0
         for t in reversed(range(0, len(rewards))):
