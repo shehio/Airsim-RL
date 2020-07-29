@@ -3,6 +3,7 @@ import itertools
 import numpy as np
 import torch
 from torch.distributions import Categorical
+import os
 
 from actor import Actor
 from critic import Critic
@@ -24,9 +25,10 @@ class PPO:
             self.predicted_values = []
             self.episode_complete = []
 
-    def __init__(self, actor: Actor, critic: Critic, action_space: list, episode_number=0, gamma: float = 0.99,
-                 eta: float = 0.2, c1: float = 0.5, c2: float = 0.01, batch_size: int = 1,
-                 learning_rate: float = 0.002, decay_rate: float = 0.90, epochs: int = 4):
+    def __init__(self, actor: Actor, critic: Critic, action_space: list, episode_number: int = 0, gamma: float = 0.99,
+                 eta: float = 0.2, c1: float = 0.5, c2: float = 0.01, batch_size: int = 10, save_interval: int = 50,
+                 learning_rate: float = 0.002, decay_rate: float = 0.90, epochs: int = 4,
+                 optimizer_file: str = 'optimizer_file', load: bool = True):
         self.actor = actor
         self.critic = critic
         self.action_space = action_space
@@ -40,10 +42,15 @@ class PPO:
         self.learning_rate = learning_rate
         self.decay_rate = decay_rate
         self.epochs = epochs
+        self.save_interval = save_interval
+        self.optimizer_file = optimizer_file
 
         self.new_policy_network = copy.deepcopy(self.actor.policy_network)
         self.optimizer = self.__get_optimizers()
         self.memory = self.Memory()
+
+        if load:
+            self.load_optimizer_and_episode()
 
     def get_action(self, state: np.array):
         # from_numpy() automatically inherits input array dtype.
@@ -77,6 +84,28 @@ class PPO:
         if self.episode_number % self.batch_size == 0:
             self.__evaluate_and_train_networks()
             self.__reset_actor_and_memory()
+
+            if self.episode_number % self.save_interval == 0:
+                self.save_model()
+
+    def save_model(self):
+        print(f'Saving the model at {self.episode_number}')
+        self.actor.save(self.episode_number)
+        self.critic.save(self.episode_number)
+        torch.save(
+            {'optimizer_state_dict': self.optimizer.state_dict(), 'episode': self.episode_number},
+            self.optimizer_file)
+
+    def load_model(self):
+        self.actor.load()
+        self.critic.load()
+        self.load_optimizer_and_episode()
+
+    def load_optimizer_and_episode(self):
+        if os.path.exists(self.optimizer_file):
+            checkpoint = torch.load(self.optimizer_file)
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.episode_number = checkpoint['episode']
 
     def __get_optimizers(self):
         params = [self.new_policy_network.parameters(), self.critic.value_network.parameters()]
