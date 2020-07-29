@@ -89,7 +89,7 @@ class PPO:
                 self.save_model()
 
     def save_model(self):
-        print(f'Saving the model at {self.episode_number}')
+        print(f'Saving the model at {self.episode_number}.')
         self.actor.save(self.episode_number)
         self.critic.save(self.episode_number)
         torch.save(
@@ -106,6 +106,9 @@ class PPO:
             checkpoint = torch.load(self.optimizer_file)
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             self.episode_number = checkpoint['episode']
+            print(f'Loaded existing optimizer continuing from episode {self.episode_number}.')
+        else:
+            print('No optimizer found.')
 
     def __get_optimizers(self):
         params = [self.new_policy_network.parameters(), self.critic.value_network.parameters()]
@@ -153,7 +156,7 @@ class PPO:
         print(f'Episode: {self.episode_number}. Total loss that we trained on: {total_loss} for {self.epochs} epochs.')
 
     def __reset_actor_and_memory(self):
-        self.actor = Actor(self.new_policy_network, self.action_space)
+        self.actor = Actor(self.new_policy_network, self.action_space, load=False)
         self.memory = self.Memory()
 
     @staticmethod

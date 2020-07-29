@@ -23,6 +23,6 @@ class Critic:
             checkpoint = torch.load(self.critic_file)
             self.value_network.load_state_dict(checkpoint['value_network_dict'])
             episode = checkpoint['episode']
-            print(f'Loaded existing critic continuing from episode {episode}')
+            print(f'Loaded existing critic continuing from episode {episode}.')
         else:
             print(f'No critic found.')
